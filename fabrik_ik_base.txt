@@ -27,20 +27,20 @@ function IKBase:initialize(origin, settings)
     self.pole_targets = {}
     self.segments = {}
     self.total_len = 0
-    for i = 1, #settings do
+    for i = 2, #settings + 1 do
         self.segments[i] = {}
-        self.segments[i].pos = settings[i].pos or self.origin + Vector(i,0,0)
-        self.segments[i].ang = settings[i].ang or Angle()
-        self.segments[i].ang_offset = settings[i].ang_offset or Angle()
-        self.segments[i].len = settings[i].len
-        self.total_len = self.total_len + settings[i].len
+        self.segments[i].pos = settings[i - 1].pos or self.origin + Vector(i,0,0)
+        self.segments[i].ang = settings[i - 1].ang or Angle()
+        self.segments[i].ang_offset = settings[i - 1].ang_offset or Angle()
+        self.segments[i].len = settings[i - 1].len
+        self.total_len = self.total_len + settings[i - 1].len
     end
-    self.segments[1].pos = origin
-    for i = 1, #self.segments do -- generate mid points with rotations, makes it easier to add visuals (holograms, etc.)
+
+    for i = 2, #self.segments do -- generate mid points with rotations, makes it easier to add visuals (holograms, etc.)
         if i == 1 then
-            self.mid_points[1] = {
-                pos = (self.origin + self.segments[1].pos) / 2,
-                ang = Angle(0,0,90) + (self.origin - self.segments[1].pos):getNormalized():getQuaternion((self.target - self.origin):cross(self.pole_targets[i] or Vector(0,0,1)):getNormalized()):getEulerAngle()
+            self.mid_points[i] = {
+                pos = (self.origin + self.segments[i].pos) / 2,
+                ang = Angle(0,0,90) + (self.origin - self.segments[i].pos):getNormalized():getQuaternion((self.target - self.origin):cross(self.pole_targets[i] or Vector(0,0,1)):getNormalized()):getEulerAngle()
             }
             continue
         end
@@ -116,7 +116,7 @@ function IKBase:solve(target, pole_targets, iterations) -- solves the arm
 
          -- forward ik, places the last segment at the target and then recursively moves the segments toward its next segment.
         self.segments[#self.segments].pos = target
-        for i = #self.segments, 2, -1 do
+        for i = #self.segments, 3, -1 do
             local prev_seg = self.segments[i]
             local seg = self.segments[i - 1]
             seg.pos = moveSeg(seg.pos, prev_seg.pos, prev_seg.len)
@@ -125,7 +125,7 @@ function IKBase:solve(target, pole_targets, iterations) -- solves the arm
 
          -- backwards ik, moves the first segment towards the origin and then recursively moves the segments toward its previous segment.
         self.segments[1].pos = moveSeg(self.segments[1].pos, self.origin, self.segments[1].len)
-        for i = 2, #self.segments do
+        for i = 3, #self.segments do
             local prev_seg = self.segments[i - 1]
             local seg = self.segments[i]
             seg.pos = moveSeg(seg.pos, prev_seg.pos, seg.len)
@@ -134,7 +134,7 @@ function IKBase:solve(target, pole_targets, iterations) -- solves the arm
         if self.segments[#self.segments].pos:getDistance(target) <= 0.1 then break end
     end
     
-    for i = 1, #self.segments do -- generate mid points with rotations, makes it easier to add visuals (holograms, etc.)
+    for i = 2, #self.segments do -- generate mid points with rotations, makes it easier to add visuals (holograms, etc.)
         if i == 1 then
             self.mid_points[i] = {
                 pos = (self.origin + self.segments[i].pos) / 2,

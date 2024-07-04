@@ -1,0 +1,44 @@
+--@name Ik Example
+--@author Mikey
+--@server
+--@include ik_lib/fabrik_ik_base.txt
+
+local IKBase = require("ik_lib/fabrik_ik_base.txt")
+
+-- define the settings for arms created. This can be reused for multiple arms.
+-- each table in the settings table represents a segment of the arm.
+local ik_settings = {
+    {len = 40, ang_offset = Angle()}, -- ang_offset controls the visual rotation of the segment when adding visuals: holograms, etc.
+    {len = 40, ang_offset = Angle()},
+}
+
+local ik_arm = IKBase:new(chip():getPos(), ik_settings)
+
+local pole_targets = {}
+
+for i = 1, #ik_settings do -- procedurally generate pole targets to edit later on if needed.
+    pole_targets[i] = Vector(0,0,1)
+end
+
+local holos = {}
+
+ik_arm:forJoints(function(i, seg) -- for every segment's end point, draw a hologram.
+    -- melon hologram because why not.
+    holos[i] = hologram.create(seg.pos, seg.ang, "models/props_junk/watermelon01.mdl")
+end)
+
+local origin_holo = hologram.create(chip():getPos(), Angle(), "models/props_junk/watermelon01.mdl")
+
+-- pole targets don't have to be declared. this can be useful for octopus-like arms.
+-- pole targets are the direction that the segment wants to bend towards.
+-- note how the first joint isn't at the origin. You will have to create the visual yourself at the origin.
+
+hook.add("think", "", function() -- update the arm.
+    ik_arm:setOrigin(chip():getPos())
+    ik_arm:solve(owner():getEyeTrace().HitPos, pole_targets) -- solve and try to reach the player's aim position.
+    ik_arm:forJoints(function(i, seg) -- for every segment's end point, update the hologram's pose.
+        holos[i]:setPos(seg.pos)
+        holos[i]:setAngles(seg.ang) -- seg.ang is modified by the ik_settings' ang_offset. try fiddling with it.
+    end)
+    origin_holo:setPos(chip():getPos()) -- update the origin hologram.
+end)
