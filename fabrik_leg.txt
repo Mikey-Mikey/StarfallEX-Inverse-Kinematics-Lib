@@ -2,6 +2,9 @@
 --@author
 --@shared
 --@include ik_lib/fabrik_ik_base.txt
+
+-- TO BE IMPROVED / FIXED
+
 local IKBase = require("ik_lib/fabrik_ik_base.txt")
 
 local FabrikLeg = class("FabrikLeg")
