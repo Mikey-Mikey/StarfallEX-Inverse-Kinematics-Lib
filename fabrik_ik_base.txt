@@ -134,7 +134,7 @@ function IKBase:solve(target, pole_targets, iterations) -- solves the arm
         if self.segments[#self.segments].pos:getDistance(target) <= 0.1 then break end
     end
     
-    for i = 2, #self.segments do -- generate mid points with rotations, makes it easier to add visuals (holograms, etc.)
+    for i = 1, #self.segments do -- generate mid points with rotations, makes it easier to add visuals (holograms, etc.)
         if i == 1 then
             self.mid_points[i] = {
                 pos = (self.origin + self.segments[i].pos) / 2,
