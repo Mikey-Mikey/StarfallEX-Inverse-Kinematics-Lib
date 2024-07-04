@@ -1,0 +1,110 @@
+--@name Fabrik Leg
+--@author
+--@shared
+--@include ik_lib/fabrik_ik_base.txt
+local IKBase = require("ik_lib/fabrik_ik_base.txt")
+
+local FabrikLeg = class("FabrikLeg")
+
+local function lerp(a, b, t)
+    return a + (b - a) * t
+end
+
+local function arc(a, b, c, t)
+    return lerp(lerp(a, c, t), lerp(b, c, t), t)
+end
+
+function FabrikLeg:initialize(settings)
+    self.origin = settings.origin or Vector()
+    
+    self.settings = settings
+    
+    self.stepping = false
+    self.grounded = false
+    
+    self.current_pos = settings.start_target or self.origin + Vector(1)
+    self.target = settings.start_target or self.origin + Vector(2)
+    self.last_target = settings.start_target or self.origin + Vector(3)
+
+    self.last_pole = settings.start_pole
+    self.current_pole = settings.start_pole
+    self.target_pole = settings.start_pole
+
+    self.anim_time = 0
+
+    self.stride_time = settings.stride_time or 1
+
+    self.ik = IKBase:new(self.origin, settings.fabrik_options)
+
+    self.id = settings.id
+end
+
+function FabrikLeg:setOrigin(pos)
+    self.origin = pos
+    self.ik:setOrigin(pos)
+end
+
+function FabrikLeg:update(pole)
+    pole = pole or self.current_pole
+    self.ik:solve(self.current_pos, pole)
+end
+
+function FabrikLeg:renderFunction(func)
+    for k, point in pairs(self.ik.mid_points) do
+        func(k, point.pos, point.ang, self.ik.segments[k].len)
+    end
+end
+
+function FabrikLeg:setTarget(target)
+    self.target = target
+end
+
+function FabrikLeg:setLastTarget(target)
+    self.last_target = target
+end
+
+function FabrikLeg:setEndPos(pos)
+    self.last_target = pos
+    self.current_pos = pos
+end
+
+function FabrikLeg:setPole(v)
+    self.last_pole = v
+    self.current_pole = v
+    self.target_pole = v
+end
+
+function FabrikLeg:takeStep(mid_step, new_pole, step_func)
+    if not timer.exists("FabrikLegAnimate" .. self.id) then
+        self.anim_time = 0
+        self.stepping = true
+        self.target_pole = new_pole
+        timer.create("FabrikLegAnimate" .. self.id, 0, 0, function()
+            self.anim_time = math.min(self.anim_time + timer.frametime() / (self.stride_time > 0 and self.stride_time or timer.frametime()), 1)
+            self.current_pos = arc(self.last_target, mid_step, self.target, self.anim_time)
+            self.current_pole = lerp(self.last_pole, self.target_pole, math.min(self.anim_time, 1)):getNormalized()
+            if self.anim_time >= 1 then
+                self.last_target = self.current_pos
+                self.last_pole = self.current_pole
+                self.stepping = false
+                if step_func then step_func() end
+                timer.remove("FabrikLegAnimate" .. self.id)
+            end
+        end)
+    end
+end
+
+function FabrikLeg:moveTo(tar_pos, additive, new_pole)
+    if timer.exists("FabrikLegAnimate" .. self.id) then timer.remove("FabrikLegAnimate" .. self.id) end
+    self.anim_time = 0
+    local new_pos = lerp(self.current_pos, tar_pos, 0.1) + additive
+    local offset = (new_pos - self.origin)
+    new_pos = self.origin + offset:getNormalized() * math.min(offset:getLength(), self.ik.total_len + 1)
+    self.current_pos = new_pos
+    self.current_pole = lerp(self.current_pole, new_pole, 0.1):getNormalized()
+    self.last_target = new_pos
+    self.last_pole = self.current_pole
+    self.stepping = false
+end
+
+return FabrikLeg
