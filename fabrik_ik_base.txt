@@ -53,7 +53,6 @@ end
 
 function IKBase:straighten(target, pole_targets) -- straightens out the segments and applies pole targets
     local direction = (target - self.origin):getNormalized()
-    direction = direction:getNormalized()
     local new_pos = self.origin
     for i,_ in pairs(self.segments) do -- back ik
         if pole_targets and type(pole_targets) == "table" and pole_targets[i] == Vector() then continue end
